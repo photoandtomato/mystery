@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密室 · 民俗解谜</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e2ddc0;
+    --ink:#221f14;
+    --sick-bright:#c9a878;
+    --warn:#6b3a2e;
+    --glow:#e0b878;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:#08070a;
+    font-family:'Noto Serif SC', serif;
+    color:#d4d8c4;
+    overflow:hidden;
+    user-select:none;
+  }
+  .brush{ font-family:'Ma Shan Zheng', cursive; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  #topbar{
+    position:fixed; top:0; left:0; right:0; height:56px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px; z-index:50;
+    background:linear-gradient(180deg, rgba(8,7,10,0.95), rgba(8,7,10,0));
+  }
+  #title{ font-size:22px; color:var(--sick-bright); text-shadow:0 0 12px rgba(201,168,120,0.3); }
+  #journalBtn{
+    background:transparent; border:1px solid var(--sick-bright);
+    color:var(--sick-bright); padding:8px 16px; border-radius:3px;
+    font-family:'Noto Serif SC',serif; font-size:15px; cursor:pointer;
+  }
+  #journalBtn:hover{ background:rgba(201,168,120,0.15); }
+
+  #room{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:#000;
+  }
+  #scene{
+    position:relative;
+    width:min(820px, 96vw);
+    height:min(620px, 84vh);
+    background-image:url('img/sealed-room.jpg');
+    background-size:cover; background-position:center;
+    border-radius:4px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);
+  }
+  #scene::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  }
+
+  .hotspot{ position:absolute; cursor:pointer; border-radius:6px; transition:box-shadow .25s, background .25s; }
+  .hotspot:hover{ background:rgba(224,184,120,0.08); box-shadow:inset 0 0 0 1px rgba(224,184,120,0.4); }
+  .hotspot-pulse::before{
+    content:''; position:absolute; width:14px; height:14px; border-radius:50%;
+    background:var(--glow); top:-6px; right:-6px;
+    box-shadow:0 0 10px 4px rgba(224,184,120,0.6);
+    animation:pulse 1.6s infinite; z-index:5;
+  }
+  @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.3); opacity:0.6; } }
+
+  /* exit prompt */
+  #exitPrompt{
+    position:absolute; left:4%; top:6%; width:26%;
+    text-align:center; font-size:13px; color:var(--sick-bright);
+    opacity:0; pointer-events:none; transition:opacity .4s;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+  #exitPrompt.show{ opacity:1; pointer-events:auto; cursor:pointer; }
+  #exitPrompt .icon{ font-size:22px; display:block; margin-bottom:4px; animation:pulse 1.8s infinite; }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(4,5,4,0.8);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .card{
+    background:var(--paper); color:var(--ink);
+    width:min(480px,88vw); border-radius:4px; padding:28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    transform:translateY(10px) scale(0.97); transition:transform .25s;
+    position:relative; max-height:82vh; overflow-y:auto;
+  }
+  .overlay.show .card{ transform:translateY(0) scale(1); }
+  .card h2{ margin:0 0 12px; font-size:23px; color:var(--warn); }
+  .card p{ font-size:16px; line-height:1.75; margin:0 0 12px; }
+  .card .torn-note{
+    background:#f0ead0; border-left:3px solid var(--warn);
+    padding:10px 14px; font-size:15px; margin:12px 0;
+    font-style:italic; color:#4a3626;
+  }
+  .card .closeBtn{
+    position:absolute; top:14px; right:16px; background:none; border:none;
+    font-size:20px; cursor:pointer; color:var(--ink); opacity:0.6;
+  }
+  .card .closeBtn:hover{ opacity:1; }
+  .btn{
+    background:var(--warn); color:#f0ead0; border:none;
+    padding:10px 22px; border-radius:4px; cursor:pointer;
+    font-family:'Noto Serif SC',serif; font-size:15px;
+  }
+  .btn:hover{ background:#8a4a38; }
+
+  /* login form */
+  .loginwrap{ text-align:center; }
+  .loginfield{ margin-bottom:14px; text-align:left; }
+  .loginfield label{ font-size:14px; display:block; margin-bottom:4px; color:#4a3626; }
+  .loginfield input{
+    width:100%; padding:10px; font-size:16px; border:1px solid #4a3626;
+    border-radius:4px; font-family:'JetBrains Mono',monospace;
+    background:#f8f2de;
+  }
+  .shake{ animation:shake .4s; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-8px); } 75%{ transform:translateX(8px); }
+  }
+  .forum-post{
+    background:#f0ead0; border:1px solid #cbb98c; border-radius:4px;
+    padding:12px 14px; margin-bottom:12px;
+  }
+  .forum-post .meta{ font-size:12px; color:#8a7a5a; margin-bottom:6px; font-family:'JetBrains Mono',monospace; }
+
+  #journal{
+    position:fixed; top:0; right:0; bottom:0; width:min(310px,80vw);
+    background:var(--paper); color:var(--ink);
+    transform:translateX(100%); transition:transform .3s;
+    z-index:80; padding:70px 22px 20px; overflow-y:auto;
+    box-shadow:-10px 0 30px rgba(0,0,0,0.5);
+  }
+  #journal.show{ transform:translateX(0); }
+  #journal h2{ color:var(--warn); margin-top:0; }
+  #journal .entry{ border-bottom:1px solid rgba(0,0,0,0.15); padding:10px 0; font-size:14px; line-height:1.6; }
+  #journal .empty{ opacity:0.5; font-style:italic; }
+
+  .fullscreen{
+    position:fixed; inset:0; background:rgba(4,5,4,0.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; text-align:center; padding:20px;
+  }
+  .fullscreen .box{ max-width:520px; }
+  .fullscreen h1{ font-size:32px; color:var(--sick-bright); margin-bottom:16px; }
+  .fullscreen p{ font-size:17px; line-height:1.8; color:#b8c0a8; margin-bottom:22px; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="title" class="brush">密室</div>
+  <button id="journalBtn">📓 线索</button>
+</div>
+
+<div id="room">
+  <div id="scene">
+    <!-- 墙面(卡通壁纸角落) -->
+    <div id="wallArea" class="hotspot hotspot-pulse" style="left:0%; top:0%; width:22%; height:44%;"></div>
+
+    <!-- 白瓷罐子:里面有骨灰和八字/人偶 -->
+    <div id="jar" class="hotspot hotspot-pulse" style="left:34%; top:26%; width:16%; height:28%;"></div>
+
+    <!-- 木箱/trunk -->
+    <div id="trunk" class="hotspot hotspot-pulse" style="left:58%; top:38%; width:24%; height:32%;"></div>
+
+    <!-- 旧电脑/CRT显示器 -->
+    <div id="monitor" class="hotspot hotspot-pulse" style="left:74%; top:46%; width:22%; height:28%;"></div>
+
+    <div id="exitPrompt"><span class="icon">🚪</span>退出密室</div>
+  </div>
+</div>
+
+<!-- clue modal -->
+<div class="overlay" id="clueOverlay">
+  <div class="card">
+    <button class="closeBtn" onclick="closeOverlay('clueOverlay')">✕</button>
+    <h2 id="clueTitle"></h2>
+    <div id="clueBody"></div>
+  </div>
+</div>
+
+<!-- login modal -->
+<div class="overlay" id="loginOverlay">
+  <div class="card" id="loginCard">
+    <button class="closeBtn" onclick="closeOverlay('loginOverlay')">✕</button>
+    <h2>论坛登录</h2>
+    <p>屏幕还停留在登录页,账号那一栏已经自动记住了——是"dong"。密码大概藏在日记本最后那句话里。</p>
+    <div class="loginwrap">
+      <div class="loginfield">
+        <label>账号</label>
+        <input type="text" value="dong" disabled>
+      </div>
+      <div class="loginfield">
+        <label>密码</label>
+        <input type="text" id="pwInput" placeholder="试着输入线索里的年份和名字">
+      </div>
+      <button class="btn" onclick="tryLogin()">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- intro -->
+<div class="fullscreen" id="introScreen">
+  <div class="box">
+    <h1 class="brush">密室</h1>
+    <p>家里那间常年落锁、连长辈都不许小孩靠近的房间。你屏住呼吸,用偷来的备用钥匙推开了门——里面又闷又暗,像是很久没有人正大光明地进出过。</p>
+    <button class="btn" onclick="startGame()">推门进去</button>
+  </div>
+</div>
+
+<!-- ending -->
+<div class="fullscreen hidden" id="endingScreen">
+  <div class="box">
+    <h1 class="brush">未完待续</h1>
+    <p id="endingText"></p>
+    <button class="btn" onclick="location.href='scene5-outside-hall.html'">继续:祠堂外 →</button>
+  </div>
+</div>
+
+<!-- journal -->
+<div id="journal">
+  <h2 class="brush">线索</h2>
+  <div id="journalList"><div class="empty">尚未发现任何线索……</div></div>
+</div>
+
+<script>
+  const state = {
+    started:false,
+    found:{ wall:false, jar:false, trunk:false, computer:false },
+    password:'1977chun'
+  };
+
+  function startGame(){
+    document.getElementById('introScreen').classList.add('hidden');
+    state.started = true;
+  }
+
+  function openOverlay(id){ document.getElementById(id).classList.add('show'); }
+  function closeOverlay(id){ document.getElementById(id).classList.remove('show'); }
+
+  function addJournalEntry(text){
+    const list = document.getElementById('journalList');
+    if(list.querySelector('.empty')) list.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.textContent = text;
+    list.appendChild(div);
+  }
+
+  function checkExit(){
+    if(state.found.wall && state.found.jar && state.found.trunk && state.found.computer){
+      document.getElementById('exitPrompt').classList.add('show');
+    }
+  }
+
+  // ---- 墙面:观察这个房间本身的违和感 ----
+  document.getElementById('wallArea').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.wall){
+      state.found.wall = true;
+      document.getElementById('wallArea').classList.remove('hotspot-pulse');
+      addJournalEntry('墙面:褪色的卡通壁纸下面,藏着不属于小孩子涂鸦的刻痕——像是有人在这里,从婴儿一路"长大"到了不该停留这么久的年纪。');
+    }
+    document.getElementById('clueTitle').textContent = '墙面';
+    document.getElementById('clueBody').innerHTML = `
+      <p>墙纸是那种哄小孩子用的卡通图案,颜色早就褪成了灰扑扑的一片。墙纸下面,却隐约露出一道道用指甲刻出来的痕迹,深浅不一,像是同一个人在很多年里反反复复刻下的。</p>
+      <p>这间房像是被冻结在了"婴儿房"那一刻,可待在这里的人,分明已经"长"到了别的年纪。</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 白瓷罐子 ----
+  document.getElementById('jar').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.jar){
+      state.found.jar = true;
+      document.getElementById('jar').classList.remove('hotspot-pulse');
+      addJournalEntry('罐子:揭开盖子,里面竟盛着灰白色的骨灰,底下还压着一张写了生辰八字的红纸,和一个用布条缠紧的小人偶。');
+    }
+    document.getElementById('clueTitle').textContent = '白瓷罐子';
+    document.getElementById('clueBody').innerHTML = `
+      <p>桌上摆着一只不起眼的白瓷罐子,盖子没盖严。你凑近揭开,一股呛人的灰味涌了出来——里面盛着灰白色的骨灰,不知道是谁的。</p>
+      <div class="torn-note">灰烬底下压着一张红纸,写着一串生辰八字;旁边还埋着一个用布条缠得严严实实的小人偶,针脚歪歪扭扭,像是仓促间赶出来的。</div>
+      <p>你的手在发抖。这只罐子,到底是用来"装"什么的?</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 木箱 ----
+  document.getElementById('trunk').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.trunk){
+      state.found.trunk = true;
+      document.getElementById('trunk').classList.remove('hotspot-pulse');
+      addJournalEntry('木箱:里面塞满了零食空袋和摔坏的玩具——像是有人被宠得肆无忌惮,却从没被真正管教过。');
+    }
+    document.getElementById('clueTitle').textContent = '木箱';
+    document.getElementById('clueBody').innerHTML = `
+      <p>木箱没有真的锁死,你轻轻一掀就开了。里面乱七八糟塞满了零食空袋、摔断了腿的玩具兵、还有几本被撕得残缺不全的漫画书。</p>
+      <p>这不像是苦孩子过的日子,倒像是被谁纵容到没了边——什么都想要,什么都能要到,却唯独要不到"能光明正大活着"这一件事。</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 电脑 ----
+  document.getElementById('monitor').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(state.found.computer){
+      showForumPosts();
+      return;
+    }
+    document.getElementById('pwInput').value = '';
+    openOverlay('loginOverlay');
+  });
+
+  function tryLogin(){
+    const val = document.getElementById('pwInput').value.trim().toLowerCase();
+    if(val === state.password){
+      state.found.computer = true;
+      closeOverlay('loginOverlay');
+      addJournalEntry('旧电脑:用"1977"和"春"拼出的密码登录成功,翻到了"dong"当年在论坛留下的几条帖子。');
+      showForumPosts();
+      checkExit();
+    }else{
+      const card = document.getElementById('loginCard');
+      card.classList.add('shake');
+      setTimeout(()=>card.classList.remove('shake'), 400);
+    }
+  }
+
+  function showForumPosts(){
+    document.getElementById('clueTitle').textContent = 'dong 的旧帖子';
+    document.getElementById('clueBody').innerHTML = `
+      <div class="forum-post">
+        <div class="meta">dong · 多年前</div>
+        <p>三哥三嫂求到我面前,说这孩子没了名分,连供都不能明着供,求我看在一家人的份上,帮忙偷偷养着。我没法拒绝——到底是自己的亲侄子。</p>
+      </div>
+      <div class="forum-post">
+        <div class="meta">dong · 多年前</div>
+        <p>瞒着家里所有人,把他当自己弟弟一样养在这间房里,他也一天天长大,却永远不能被任何人看见,连一次太阳都没晒过。有时候我也怨,这担子凭什么落到我头上——可看着三哥三嫂那个样子,又说不出拒绝的话。</p>
+      </div>
+      <div class="forum-post">
+        <div class="meta">dong · 多年前</div>
+        <p>后来才慢慢拼出真相:当年这笔债,本不该由他一个刚出生的孩子来还——是二房那边动了歪心思,借着三哥家的名义去许愿求子,才害得这愿望砸到了这个刚落地的孩子头上。三哥三嫂是被人当了枪使,却也没处说理去。</p>
+      </div>
+      <div class="forum-post">
+        <div class="meta">dong · 最近一条</div>
+        <p>这些年头一次,我又听见那个熟悉的动静从祠堂那边传来了。上一次,是十八年前。</p>
+      </div>
+    `;
+    openOverlay('clueOverlay');
+  }
+
+  document.getElementById('exitPrompt').addEventListener('click', ()=>{
+    if(!state.started) return;
+    document.getElementById('endingText').textContent =
+      '你合上屏幕,房间里那盏孤零零的灯泡忽然闪烁了一下。dong最后一条帖子的日期,离今天很近——"上一次是十八年前",而这一次,似乎已经开始了。';
+    document.getElementById('endingScreen').classList.remove('hidden');
+  });
+
+  document.getElementById('journalBtn').addEventListener('click', ()=>{
+    document.getElementById('journal').classList.toggle('show');
+  });
+</script>
+
+</body>
+</html>

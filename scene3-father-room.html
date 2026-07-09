@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>父亲的房间 · 民俗解谜</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e8ddbf;
+    --ink:#2b2419;
+    --gold:#a8843a;
+    --gold-bright:#d0a94f;
+    --warn:#7a4a2e;
+    --glow:#e8a33d;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:#0d0a06;
+    font-family:'Noto Serif SC', serif;
+    color:#e0d8c4;
+    overflow:hidden;
+    user-select:none;
+  }
+  .brush{ font-family:'Ma Shan Zheng', cursive; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  #topbar{
+    position:fixed; top:0; left:0; right:0; height:56px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px; z-index:50;
+    background:linear-gradient(180deg, rgba(13,10,6,0.95), rgba(13,10,6,0));
+  }
+  #title{ font-size:22px; color:var(--gold-bright); text-shadow:0 0 12px rgba(208,169,79,0.3); }
+  #journalBtn{
+    background:transparent; border:1px solid var(--gold);
+    color:var(--gold-bright); padding:8px 16px; border-radius:3px;
+    font-family:'Noto Serif SC',serif; font-size:15px; cursor:pointer;
+  }
+  #journalBtn:hover{ background:rgba(168,132,58,0.15); }
+
+  #room{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:#000;
+  }
+  #scene{
+    position:relative;
+    width:min(820px, 96vw);
+    height:min(620px, 84vh);
+    background-image:url('img/father-room.jpg');
+    background-size:cover; background-position:center;
+    border-radius:4px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);
+  }
+  #scene::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .hotspot{ position:absolute; cursor:pointer; border-radius:6px; transition:box-shadow .25s, background .25s; }
+  .hotspot:hover{ background:rgba(232,163,61,0.08); box-shadow:inset 0 0 0 1px rgba(232,163,61,0.4); }
+  .hotspot-pulse::before{
+    content:''; position:absolute; width:14px; height:14px; border-radius:50%;
+    background:var(--glow); top:-6px; right:-6px;
+    box-shadow:0 0 10px 4px rgba(232,163,61,0.6);
+    animation:pulse 1.6s infinite; z-index:5;
+  }
+  @keyframes pulse{ 0%,100%{ transform:scale(1); opacity:1; } 50%{ transform:scale(1.3); opacity:0.6; } }
+
+  .hotspot.hidden-until-found{ display:none; }
+  .hotspot.hidden-until-found.reveal{ display:block; }
+
+  /* exit prompt */
+  #exitPrompt{
+    position:absolute; left:4%; top:6%; width:26%;
+    text-align:center; font-size:13px; color:var(--gold-bright);
+    opacity:0; pointer-events:none; transition:opacity .4s;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+  #exitPrompt.show{ opacity:1; pointer-events:auto; cursor:pointer; }
+  #exitPrompt .icon{ font-size:22px; display:block; margin-bottom:4px; animation:pulse 1.8s infinite; }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(8,6,3,0.78);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .card{
+    background:var(--paper); color:var(--ink);
+    width:min(460px,88vw); border-radius:4px; padding:28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    transform:translateY(10px) scale(0.97); transition:transform .25s;
+    position:relative; max-height:82vh; overflow-y:auto;
+  }
+  .overlay.show .card{ transform:translateY(0) scale(1); }
+  .card h2{ margin:0 0 12px; font-size:23px; color:var(--warn); }
+  .card p{ font-size:16px; line-height:1.75; margin:0 0 12px; }
+  .card .entry-date{
+    font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--warn);
+    margin:18px 0 4px; border-top:1px dashed rgba(0,0,0,0.2); padding-top:14px;
+  }
+  .card .entry-date:first-of-type{ border-top:none; padding-top:0; margin-top:0; }
+  .card .torn-note{
+    background:#f4ecd4; border-left:3px solid var(--warn);
+    padding:10px 14px; font-size:15px; margin:12px 0;
+    font-style:italic; color:#4a3626;
+  }
+  .card .closeBtn{
+    position:absolute; top:14px; right:16px; background:none; border:none;
+    font-size:20px; cursor:pointer; color:var(--ink); opacity:0.6;
+  }
+  .card .closeBtn:hover{ opacity:1; }
+  .btn{
+    background:var(--warn); color:#f4ecd4; border:none;
+    padding:10px 22px; border-radius:4px; cursor:pointer;
+    font-family:'Noto Serif SC',serif; font-size:15px;
+  }
+  .btn:hover{ background:#96602f; }
+
+  #journal{
+    position:fixed; top:0; right:0; bottom:0; width:min(310px,80vw);
+    background:var(--paper); color:var(--ink);
+    transform:translateX(100%); transition:transform .3s;
+    z-index:80; padding:70px 22px 20px; overflow-y:auto;
+    box-shadow:-10px 0 30px rgba(0,0,0,0.5);
+  }
+  #journal.show{ transform:translateX(0); }
+  #journal h2{ color:var(--warn); margin-top:0; }
+  #journal .entry{ border-bottom:1px solid rgba(0,0,0,0.15); padding:10px 0; font-size:14px; line-height:1.6; }
+  #journal .empty{ opacity:0.5; font-style:italic; }
+
+  .fullscreen{
+    position:fixed; inset:0; background:rgba(8,6,3,0.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; text-align:center; padding:20px;
+  }
+  .fullscreen .box{ max-width:520px; }
+  .fullscreen h1{ font-size:32px; color:var(--gold-bright); margin-bottom:16px; }
+  .fullscreen p{ font-size:17px; line-height:1.8; color:#c9bfa0; margin-bottom:22px; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="title" class="brush">父亲的房间</div>
+  <button id="journalBtn">📓 线索</button>
+</div>
+
+<div id="room">
+  <div id="scene">
+    <!-- 书柜:先发现异常空隙 -->
+    <div id="bookshelf" class="hotspot hotspot-pulse" style="left:8%; top:2%; width:46%; height:58%;"></div>
+
+    <!-- 桌上的书(书柜翻出后才提示可点) -->
+    <div id="diaryItem" class="hotspot hidden-until-found" style="left:38%; top:56%; width:18%; height:12%;"></div>
+
+    <!-- 揉皱的纸团/纸篓 -->
+    <div id="paperBall" class="hotspot hotspot-pulse" style="left:0%; top:76%; width:24%; height:24%;"></div>
+
+    <div id="exitPrompt"><span class="icon">🚪</span>轻手轻脚离开</div>
+  </div>
+</div>
+
+<!-- clue modal -->
+<div class="overlay" id="clueOverlay">
+  <div class="card">
+    <button class="closeBtn" onclick="closeOverlay('clueOverlay')">✕</button>
+    <h2 id="clueTitle"></h2>
+    <div id="clueBody"></div>
+  </div>
+</div>
+
+<!-- intro -->
+<div class="fullscreen" id="introScreen">
+  <div class="box">
+    <h1 class="brush">父亲的房间</h1>
+    <p>这几天父亲总是心神不宁,半夜起来在院子里踱步,接了电话就压低声音躲到没人的地方说话。你猜他和堂姐的事有关,趁他出门,你溜进了他的房间。</p>
+    <button class="btn" onclick="startGame()">悄悄进去</button>
+  </div>
+</div>
+
+<!-- ending -->
+<div class="fullscreen hidden" id="endingScreen">
+  <div class="box">
+    <h1 class="brush">未完待续</h1>
+    <p id="endingText"></p>
+    <button class="btn" onclick="location.href='scene4-sealed-room.html'">继续:密室 →</button>
+  </div>
+</div>
+
+<!-- journal -->
+<div id="journal">
+  <h2 class="brush">线索</h2>
+  <div id="journalList"><div class="empty">尚未发现任何线索……</div></div>
+</div>
+
+<script>
+  const state = {
+    started:false,
+    found:{ bookshelf:false, diary:false, paper:false },
+  };
+
+  function startGame(){
+    document.getElementById('introScreen').classList.add('hidden');
+    state.started = true;
+  }
+
+  function openOverlay(id){ document.getElementById(id).classList.add('show'); }
+  function closeOverlay(id){ document.getElementById(id).classList.remove('show'); }
+
+  function addJournalEntry(text){
+    const list = document.getElementById('journalList');
+    if(list.querySelector('.empty')) list.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.textContent = text;
+    list.appendChild(div);
+  }
+
+  function checkExit(){
+    if(state.found.bookshelf && state.found.diary && state.found.paper){
+      document.getElementById('exitPrompt').classList.add('show');
+    }
+  }
+
+  // ---- 书柜:先发现异常缝隙,再翻出日记本 ----
+  document.getElementById('bookshelf').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.bookshelf){
+      state.found.bookshelf = true;
+      document.getElementById('bookshelf').classList.remove('hotspot-pulse');
+      document.getElementById('diaryItem').classList.add('reveal', 'hotspot-pulse');
+      addJournalEntry('书柜:第二层书架上有个明显的空隙,像是常年抽出又放回同一本书留下的痕迹——一本旧日记本就藏在最里侧。');
+    }
+    document.getElementById('clueTitle').textContent = '书柜';
+    document.getElementById('clueBody').innerHTML = `
+      <p>书架第二层有一处窄窄的空隙,比其他地方都干净,像是有一本书常年被抽出又放回。你伸手探进去,摸到一本硬壳笔记本,封皮已经磨得发亮。</p>
+      <p>你把它拿到了桌上。</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 日记本(书柜翻出后才出现) ----
+  document.getElementById('diaryItem').addEventListener('click', ()=>{
+    if(!state.started || !state.found.bookshelf) return;
+    if(!state.found.diary){
+      state.found.diary = true;
+      document.getElementById('diaryItem').classList.remove('hotspot-pulse');
+      addJournalEntry('日记本:父亲少年时期的日记,提到自己曾有一位从未谋面的姐姐,以及一个论坛账号"dong",还留下一句像是某种密码的话,却没说是用在哪里。');
+    }
+    document.getElementById('clueTitle').textContent = '日记本';
+    document.getElementById('clueBody').innerHTML = `
+      <div class="entry-date">一九九X年 X月</div>
+      <p>今天又去祠堂,爹和大伯二伯照旧进去上香,把我一个人晾在外面。他们说等我满十八岁才能进去。我问娘,为什么只有我不能进,娘不说话,脸色很难看。</p>
+      <div class="entry-date">一九九X年 X月</div>
+      <p>翻家里老账本时,看见一行被划掉的字,像是个女孩的名字,年份是一九七七年。我拿去问奶奶,奶奶一巴掌打过来,让我以后再不许提。我才知道,原来我还有一个姐姐——只是从生下来那天起,她就没有被当成"活过"的人。</p>
+      <div class="entry-date">一九九X年 X月</div>
+      <p>在网上找了个论坛,注册了个号,想找人说说这件事——也说不清是想倾诉,还是单纯想让"她"这个人,在什么地方留下一点痕迹。用的名字是 dong,谁都猜不到是谁。</p>
+      <div class="entry-date">一九九X年 X月(最后一页)</div>
+      <p>往后有些东西,我只留给自己一个人知道。密码也好,暗号也好,设得越没人猜得到越好——</p>
+      <div class="torn-note">"就用那一年,和只属于她一个字的名字吧。没人会记得她,那就让我一个人记得。"</div>
+      <p>你盯着这句话看了很久,把"1977"和"春"这两个字悄悄记在了心里——虽然还不知道,这串东西到底是用来做什么的。</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 揉皱的纸团 ----
+  document.getElementById('paperBall').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.paper){
+      state.found.paper = true;
+      document.getElementById('paperBall').classList.remove('hotspot-pulse');
+      addJournalEntry('纸团:墙角揉皱又摊平的纸上,是两个女孩的生辰八字对比,其中一个被浓墨狠狠划掉——划掉的正是你自己的名字。');
+    }
+    document.getElementById('clueTitle').textContent = '揉皱的纸团';
+    document.getElementById('clueBody').innerHTML = `
+      <p>墙角的纸篓里,有一团被揉得皱巴巴又不知被谁重新摊平、压在书底下的纸。你把它铺展开——上面是父亲的字迹,写着两行生辰八字,并排对照着,像是在权衡什么。</p>
+      <p>一行写着"习方"。另一行,写的是你自己的名字。</p>
+      <div class="torn-note">你的名字那一行,被浓重的墨线整个划掉,力道大得几乎划破了纸背,旁边只留一句像是自言自语的批注:「不能是她。」</div>
+      <p>你的心跳漏了一拍。这张纸是什么时候写的?为什么会有你的生辰八字,和堂姐的放在一起比较?</p>
+    `;
+    openOverlay('clueOverlay');
+    checkExit();
+  });
+
+  // ---- 离开房间 ----
+  document.getElementById('exitPrompt').addEventListener('click', ()=>{
+    if(!state.started) return;
+    document.getElementById('endingText').textContent =
+      '你把日记和纸团原样放回原处,心跳还没平复。"dong"、1977、那句莫名其妙的密码,还有那张被划掉的、属于你自己的名字——这些碎片本该拼出点什么,可你还差一块关键的东西。';
+    document.getElementById('endingScreen').classList.remove('hidden');
+  });
+
+  document.getElementById('journalBtn').addEventListener('click', ()=>{
+    document.getElementById('journal').classList.toggle('show');
+  });
+</script>
+
+</body>
+</html>

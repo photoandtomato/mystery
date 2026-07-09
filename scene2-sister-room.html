@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>堂姐的房间 · 民俗解谜</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Ma+Shan+Zheng&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#eee3c4;
+    --ink:#2b2419;
+    --accent:#7d8fc7;
+    --accent-bright:#a3b3e0;
+    --warn:#a85a3a;
+    --glow:#f4c77e;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:#0a0b10;
+    font-family:'Noto Serif SC', serif;
+    color:#dcdce8;
+    overflow:hidden;
+    user-select:none;
+  }
+  .brush{ font-family:'Ma Shan Zheng', cursive; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  #topbar{
+    position:fixed; top:0; left:0; right:0; height:56px;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 22px; z-index:50;
+    background:linear-gradient(180deg, rgba(10,11,16,0.95), rgba(10,11,16,0));
+  }
+  #title{ font-size:22px; color:var(--accent-bright); text-shadow:0 0 12px rgba(163,179,224,0.3); }
+  #journalBtn{
+    background:transparent; border:1px solid var(--accent);
+    color:var(--accent-bright); padding:8px 16px; border-radius:3px;
+    font-family:'Noto Serif SC',serif; font-size:15px; cursor:pointer;
+  }
+  #journalBtn:hover{ background:rgba(125,143,199,0.15); }
+  #timerDisplay{
+    font-family:'JetBrains Mono',monospace; font-size:20px; color:var(--accent-bright);
+    letter-spacing:0.05em;
+  }
+  #timerDisplay.warn{ color:#e0654a; animation:timerPulse 1s infinite; }
+  @keyframes timerPulse{ 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+
+  #room{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background:#000;
+  }
+  #scene{
+    position:relative;
+    width:min(760px, 96vw);
+    height:min(760px, 88vh);
+    background-image:url('img/sister-room.jpg');
+    background-size:cover; background-position:center;
+    border-radius:4px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);
+  }
+  #scene::after{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .hotspot{ position:absolute; cursor:pointer; border-radius:6px; transition:box-shadow .25s, background .25s; }
+  .hotspot:hover{ background:rgba(244,199,126,0.08); box-shadow:inset 0 0 0 1px rgba(244,199,126,0.4); }
+  .hotspot-pulse::before{
+    content:''; position:absolute; width:14px; height:14px; border-radius:50%;
+    background:var(--glow); top:-6px; right:-6px;
+    box-shadow:0 0 10px 4px rgba(244,199,126,0.6);
+    animation:pulse 1.6s infinite; z-index:5;
+  }
+  @keyframes pulse{
+    0%,100%{ transform:scale(1); opacity:1; }
+    50%{ transform:scale(1.3); opacity:0.6; }
+  }
+
+  /* exit prompt */
+  #exitPrompt{
+    position:absolute; left:4%; top:6%; width:22%;
+    text-align:center; font-size:13px; color:var(--accent-bright);
+    opacity:0; pointer-events:none; transition:opacity .4s;
+    text-shadow:0 1px 4px rgba(0,0,0,0.8);
+  }
+  #exitPrompt.show{ opacity:1; pointer-events:auto; cursor:pointer; }
+  #exitPrompt .icon{ font-size:22px; display:block; margin-bottom:4px; animation:pulse 1.8s infinite; }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0; background:rgba(6,7,12,0.78);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .overlay.show{ opacity:1; pointer-events:auto; }
+  .card{
+    background:var(--paper); color:var(--ink);
+    width:min(440px,88vw); border-radius:4px; padding:28px 26px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    transform:translateY(10px) scale(0.97); transition:transform .25s;
+    position:relative; max-height:82vh; overflow-y:auto;
+  }
+  .overlay.show .card{ transform:translateY(0) scale(1); }
+  .card h2{ margin:0 0 12px; font-size:23px; color:var(--warn); }
+  .card p{ font-size:16px; line-height:1.7; margin:0 0 12px; }
+  .card .torn-note{
+    background:#f4ecd4; border-left:3px solid var(--warn);
+    padding:10px 14px; font-size:15px; margin:12px 0;
+    font-style:italic; color:#4a3626;
+  }
+  .card .closeBtn{
+    position:absolute; top:14px; right:16px; background:none; border:none;
+    font-size:20px; cursor:pointer; color:var(--ink); opacity:0.6;
+  }
+  .card .closeBtn:hover{ opacity:1; }
+  .btn{
+    background:var(--warn); color:#fff2e2; border:none;
+    padding:10px 22px; border-radius:4px; cursor:pointer;
+    font-family:'Noto Serif SC',serif; font-size:15px;
+  }
+  .btn:hover{ background:#c46b45; }
+  .btn.blue{ background:var(--accent); color:#12141f; }
+  .btn.blue:hover{ background:var(--accent-bright); }
+
+  /* phone keypad */
+  .phonewrap{ text-align:center; }
+  .phonescreen{
+    background:#0a0a12; color:#7d8fc7; border-radius:14px;
+    padding:20px; margin:0 auto 16px; width:200px;
+  }
+  .pcode{
+    font-family:'JetBrains Mono',monospace; font-size:26px; letter-spacing:8px;
+    margin-bottom:10px; min-height:32px;
+  }
+  .keypad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .keypad button{
+    padding:10px; font-size:18px; border-radius:6px; border:1px solid #333;
+    background:#12141f; color:#dcdce8; cursor:pointer; font-family:'JetBrains Mono',monospace;
+  }
+  .keypad button:hover{ background:#20263a; }
+  .shake{ animation:shake .4s; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-8px); } 75%{ transform:translateX(8px); }
+  }
+
+  #journal{
+    position:fixed; top:0; right:0; bottom:0; width:min(310px,80vw);
+    background:var(--paper); color:var(--ink);
+    transform:translateX(100%); transition:transform .3s;
+    z-index:80; padding:70px 22px 20px; overflow-y:auto;
+    box-shadow:-10px 0 30px rgba(0,0,0,0.5);
+  }
+  #journal.show{ transform:translateX(0); }
+  #journal h2{ color:var(--warn); margin-top:0; }
+  #journal .entry{ border-bottom:1px solid rgba(0,0,0,0.15); padding:10px 0; font-size:14px; line-height:1.6; }
+  #journal .empty{ opacity:0.5; font-style:italic; }
+
+  .fullscreen{
+    position:fixed; inset:0; background:rgba(6,7,12,0.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; text-align:center; padding:20px;
+  }
+  .fullscreen .box{ max-width:500px; }
+  .fullscreen h1{ font-size:32px; color:var(--accent-bright); margin-bottom:16px; }
+  .fullscreen p{ font-size:17px; line-height:1.8; color:#b8bcd8; margin-bottom:22px; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div id="title" class="brush">堂姐的房间</div>
+  <div id="timerDisplay" class="mono">00:45</div>
+  <button id="journalBtn">📓 线索</button>
+</div>
+
+<div id="room">
+  <div id="scene">
+    <!-- 床铺:被子团乱,零食包装袋散落 -->
+    <div id="bed" class="hotspot hotspot-pulse" style="left:2%; top:36%; width:52%; height:58%;"></div>
+
+    <!-- 台历/软木板:红笔圈起的日期 -->
+    <div id="corkboard" class="hotspot hotspot-pulse" style="left:54%; top:5%; width:44%; height:38%;"></div>
+
+    <!-- 笔记本:摊开写着字的本子 -->
+    <div id="desk" class="hotspot hotspot-pulse" style="left:55%; top:44%; width:22%; height:16%;"></div>
+
+    <!-- 手机:正在充电 -->
+    <div id="phone" class="hotspot hotspot-pulse" style="left:79%; top:45%; width:14%; height:13%;"></div>
+
+    <div id="exitPrompt"><span class="icon">🚪</span>悄悄退出房间</div>
+  </div>
+</div>
+
+<!-- clue modal -->
+<div class="overlay" id="clueOverlay">
+  <div class="card">
+    <button class="closeBtn" onclick="closeOverlay('clueOverlay')">✕</button>
+    <h2 id="clueTitle"></h2>
+    <div id="clueBody"></div>
+  </div>
+</div>
+
+<!-- phone modal -->
+<div class="overlay" id="phoneOverlay">
+  <div class="card" id="phoneCard">
+    <button class="closeBtn" onclick="closeOverlay('phoneOverlay')">✕</button>
+    <h2>手机锁屏</h2>
+    <p>屏幕还亮着,锁屏上是四位数字密码。台历上那个被圈起来的日期,或许就是答案。</p>
+    <div class="phonewrap">
+      <div class="phonescreen">
+        <div class="pcode mono" id="pcodeDisplay">••••</div>
+      </div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+  </div>
+</div>
+
+<!-- intro -->
+<div class="fullscreen" id="introScreen">
+  <div class="box">
+    <h1 class="brush">堂姐的房间</h1>
+    <p>堂姐李习方这半个月性情大变,你趁她洗澡的功夫,借口找作业本溜进了她的房间。淋浴的水声还在响,但谁也说不准还剩多少时间——你得在她出来之前,找到点线索。</p>
+    <button class="btn blue" onclick="startGame()">悄悄进去</button>
+  </div>
+</div>
+
+<!-- ending -->
+<div class="fullscreen hidden" id="endingScreen">
+  <div class="box">
+    <h1 class="brush">未完待续</h1>
+    <p id="endingText"></p>
+    <button class="btn blue" onclick="location.href='scene3-father-room.html'">继续:父亲的房间 →</button>
+  </div>
+</div>
+
+<!-- bad ending -->
+<div class="fullscreen hidden" id="badEndingScreen">
+  <div class="box">
+    <h1 class="brush">水声停了</h1>
+    <p>浴室的水声不知什么时候已经停了。你还没来得及反应,门把手就转动了——堂姐带着一身水汽站在门口,直直地看着你,眼神里有种你说不清的陌生感。</p>
+    <button class="btn blue" onclick="location.reload()">重新来一次</button>
+  </div>
+</div>
+
+<!-- journal -->
+<div id="journal">
+  <h2 class="brush">线索</h2>
+  <div id="journalList"><div class="empty">尚未发现任何线索……</div></div>
+</div>
+
+<script>
+  const state = {
+    started:false,
+    found:{ desk:false, bed:false, calendar:false, phone:false },
+    pcode:'',
+    targetCode:'0317', // 台历上圈起来的日期:3月17日
+    timeLeft:45,
+    timerId:null
+  };
+
+  function startGame(){
+    document.getElementById('introScreen').classList.add('hidden');
+    state.started = true;
+    state.timerId = setInterval(tickTimer, 1000);
+  }
+
+  function tickTimer(){
+    state.timeLeft--;
+    const mm = String(Math.floor(state.timeLeft/60)).padStart(2,'0');
+    const ss = String(state.timeLeft%60).padStart(2,'0');
+    const display = document.getElementById('timerDisplay');
+    display.textContent = `${mm}:${ss}`;
+    if(state.timeLeft <= 15) display.classList.add('warn');
+    if(state.timeLeft <= 0){
+      clearInterval(state.timerId);
+      document.getElementById('badEndingScreen').classList.remove('hidden');
+    }
+  }
+
+  function openOverlay(id){ document.getElementById(id).classList.add('show'); }
+  function closeOverlay(id){ document.getElementById(id).classList.remove('show'); }
+
+  function addJournalEntry(text){
+    const list = document.getElementById('journalList');
+    if(list.querySelector('.empty')) list.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.textContent = text;
+    list.appendChild(div);
+  }
+
+  function checkExit(){
+    if(state.found.desk && state.found.bed && state.found.calendar && state.found.phone){
+      document.getElementById('exitPrompt').classList.add('show');
+    }
+  }
+
+  document.getElementById('exitPrompt').addEventListener('click', ()=>{
+    if(!state.started) return;
+    clearInterval(state.timerId);
+    document.getElementById('endingText').textContent =
+      '手机里那条从没发出去的草稿,像是堂姐在向谁求救。你正想再往下翻,浴室的水声忽然停了——你慌忙把手机放回原位,心跳如鼓,轻手轻脚退出了房间。';
+    document.getElementById('endingScreen').classList.remove('hidden');
+  });
+
+  // ---- 笔记本 ----
+  document.getElementById('desk').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.desk){
+      state.found.desk = true;
+      document.getElementById('desk').classList.remove('hotspot-pulse');
+      addJournalEntry('笔记本:摊开的本子写到一半戛然而止,字迹也和平时不太一样。');
+    }
+    document.getElementById('clueTitle').textContent = '笔记本';
+    document.getElementById('clueBody').innerHTML = `
+      <p>灯下摊着一本没写完的笔记,笔尖停在半句话中间,后面是一道用力划破纸面的墨痕。堂姐向来是年级第一,字迹永远工工整整——这可不像她会留下的东西。</p>
+      <p>你又翻了翻前面几页,发现有几处字迹明显更潦草、更用力,和她平时娟秀的字完全不像同一个人写的。</p>
+    `;
+    openOverlay('clueOverlay');
+  });
+
+  // ---- 床铺 ----
+  document.getElementById('bed').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.bed){
+      state.found.bed = true;
+      document.getElementById('bed').classList.remove('hotspot-pulse');
+      addJournalEntry('床铺:被子团在一角,枕边还藏着几个零食包装袋,和堂姐一贯的整洁习惯完全不符。');
+    }
+    document.getElementById('clueTitle').textContent = '床铺';
+    document.getElementById('clueBody').innerHTML = `
+      <p>被子胡乱团在床角,枕头旁边还散着几个零食包装袋——糖果纸、辣条袋,揉成一团随手一扔。</p>
+      <p>你愣了一下。堂姐从小到大房间永远一尘不染,什么时候变得像个被宠坏的小孩了?</p>
+    `;
+    openOverlay('clueOverlay');
+  });
+
+  // ---- 台历/软木板 ----
+  document.getElementById('corkboard').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(!state.found.calendar){
+      state.found.calendar = true;
+      document.getElementById('corkboard').classList.remove('hotspot-pulse');
+      addJournalEntry('台历:3月17日被红笔重重圈起,写着"重要!!",但没写是谁的、什么事——细想,堂姐好像就是从那前后开始不对劲的。');
+    }
+    document.getElementById('clueTitle').textContent = '台历';
+    document.getElementById('clueBody').innerHTML = `
+      <p>墙上钉着一张软木板,压着一张小台历。某一天被红笔重重圈了好几圈,旁边匆匆写着"重要!!",却没有写清楚是谁的生日、什么纪念日。</p>
+      <div class="torn-note">日期:3 月 17 日</div>
+      <p>你仔细想了想——堂姐好像就是从那天前后,开始变得有点不一样。</p>
+    `;
+    openOverlay('clueOverlay');
+  });
+
+  // ---- 手机 ----
+  document.getElementById('phone').addEventListener('click', ()=>{
+    if(!state.started) return;
+    if(state.found.phone){
+      document.getElementById('clueTitle').textContent = '手机';
+      document.getElementById('clueBody').innerHTML = `<p>手机已经解锁过了,那条藏着的草稿你已经看过。</p>`;
+      openOverlay('clueOverlay');
+      return;
+    }
+    state.pcode = '';
+    renderKeypad();
+    openOverlay('phoneOverlay');
+  });
+
+  function renderKeypad(){
+    document.getElementById('pcodeDisplay').textContent = '•'.repeat(state.pcode.length) + '_'.repeat(4-state.pcode.length);
+    const pad = document.getElementById('keypad');
+    pad.innerHTML = '';
+    const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','确认'];
+    keys.forEach(k=>{
+      const b = document.createElement('button');
+      b.textContent = k;
+      b.onclick = ()=> handleKey(k);
+      pad.appendChild(b);
+    });
+  }
+
+  function handleKey(k){
+    if(k === '⌫'){ state.pcode = state.pcode.slice(0,-1); renderKeypad(); return; }
+    if(k === '确认'){ tryUnlockPhone(); return; }
+    if(state.pcode.length < 4){ state.pcode += k; renderKeypad(); }
+  }
+
+  function tryUnlockPhone(){
+    if(state.pcode === state.targetCode){
+      state.found.phone = true;
+      document.getElementById('clueTitle').textContent = '隐藏的草稿';
+      document.getElementById('clueBody').innerHTML = `
+        <p>密码解锁的瞬间,屏幕跳回了备忘录 App,停在一条从未发出去的草稿上,写了删、删了写,最后还是没敢发出去:</p>
+        <div class="torn-note">"最近总觉得自己有一段一段的时间是空白的……醒过来的时候会在完全想不起来的地方,手上还沾着不知道哪来的东西。我是不是……不对劲了。"</div>
+        <p>草稿的最后一行,时间戳显示是 3 月 14 日,凌晨。</p>
+      `;
+      closeOverlay('phoneOverlay');
+      openOverlay('clueOverlay');
+      addJournalEntry('手机:解锁后看到一条没发出去的草稿,堂姐写自己"有一段一段的时间是空白的",时间戳是3月14日凌晨——比台历上圈的那天还早。');
+      checkExit();
+    }else{
+      const card = document.getElementById('phoneCard');
+      card.classList.add('shake');
+      setTimeout(()=>{ card.classList.remove('shake'); state.pcode=''; renderKeypad(); }, 400);
+    }
+  }
+
+  document.getElementById('journalBtn').addEventListener('click', ()=>{
+    document.getElementById('journal').classList.toggle('show');
+  });
+</script>
+
+</body>
+</html>
